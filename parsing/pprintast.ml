@@ -1303,6 +1303,7 @@ and simple_expr ctxt f x =
         let expression = expression ctxt in
         pp f fmt (pattern ctxt) s expression e1 direction_flag
           df expression e2 expression e3
+    | Pexp_break -> pp f "break_"
     | _ ->  paren true (expression ctxt) f x
 
 and attributes ctxt f l =
