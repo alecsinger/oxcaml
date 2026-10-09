@@ -1403,6 +1403,12 @@ and lambda_event_kind =
   | Lev_function
   | Lev_pseudo
 
+type transl_ctx =
+  {
+    scopes: Debuginfo.Scoped_location.scopes;
+    label_map : static_label Ident.Map.t
+  }
+
 let rec try_to_find_location lam =
   (* This is very much best-effort and may overshoot, but will still likely be
      better than nothing. *)
@@ -4123,8 +4129,3 @@ let icmp cmp size x y ~loc = binary (Icmp (size, cmp)) x y ~loc
 let phys_equal x y ~loc = Lprim (Pphys_equal Eq, [x;y], loc)
 
 let static_cast ~src ~dst arg ~loc = unary (Static_cast {src; dst}) arg ~loc
-
-type transl_ctx =
-  {
-    scopes: Debuginfo.Scoped_location.scopes
-  }
