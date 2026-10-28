@@ -482,29 +482,43 @@ val of_type_decl_overapproximate_unknown :
 (** How the kind of a type relates to the kind of a field it contains without
     boxing: a label of an unboxed record, or the field of an [[@@unboxed]]
     record or constructor, possibly through several such fields. The kind of the
-    outer type is the kind of the field with a modality applied. *)
+    outer type is the kind of the field with a modality applied, joined with
+    some bounds.
+
+    The bounds come from mutable labels of unboxed records: such a label stops
+    the outer type from crossing contention and visibility, like a mutable
+    record. A modality on a label only applies to its contents, so it does not
+    hide that label's mutability, but a modality above the label does. *)
 module Unboxed_field_wrapping : sig
   type t
 
   (** Not inside any field *)
   val id : t
 
-  (** A field with the given modality *)
+  (** A field with the given modality that is not a mutable label of an unboxed
+      record. *)
   val of_modality : Mode.Modality.Const.t -> t
 
-  (** A label of an unboxed record *)
+  (** A field with the given modality and mutability. Fails on atomic fields,
+      which can't be reached without boxing. *)
+  val of_field :
+    modality:Mode.Modality.Const.t -> mutability:Types.mutability -> t
+
+  (** [of_field] for a label *)
   val of_label : Types.label_declaration -> t
 
   (** [concat outer ~then_:inner] describes the fields of [inner] inside the
-      fields of [outer]. *)
+      fields of [outer]. The bounds of [inner] are masked by the modality of
+      [outer]. *)
   val concat : t -> then_:t -> t
 
-  (** Change the kind of a field to the kind of the outer type, like
-      [apply_modality_l]. *)
+  (** Change the kind of a field to the kind of the outer type. Like
+      [apply_modality_l], but also joining in the bounds. *)
   val apply_l : t -> (allowed * 'r) Types.jkind -> Types.jkind_l
 
   (** Change an expectation of the outer type to an expectation of the field,
-      like [apply_modality_r]. *)
+      like [apply_modality_r]. Fails if the bounds are not below the mod-bounds
+      of the expectation. *)
   val apply_r : t -> ('l * allowed) Types.jkind -> (Types.jkind_r, unit) result
 end
 
