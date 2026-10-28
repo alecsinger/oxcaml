@@ -4626,7 +4626,7 @@ and type_pat_aux
          restriction below; then, print a more informative error when
          the argument is a pattern that [as deref_ x] would accept. *)
       (match sp1.ppat_desc with
-       | Ppat_any | Ppat_var _ -> ()
+       | Ppat_var _ -> ()
        | _ ->
          Error.log_and_raise sp1.ppat_loc !!penv Deref_pattern_bad_argument);
       let { position_mutability; container_mode; container_loc; base;

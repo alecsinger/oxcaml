@@ -204,6 +204,15 @@ Line 1, characters 23-31:
 Error: Dereference patterns must bind a variable, as in "deref_ x".
 |}]
 
+(* Not even a wildcard *)
+let bad_wildcard (deref_ _, _) = ()
+[%%expect{|
+Line 1, characters 25-26:
+1 | let bad_wildcard (deref_ _, _) = ()
+                             ^
+Error: Dereference patterns must bind a variable, as in "deref_ x".
+|}]
+
 (* In particular, dereference patterns can't be nested *)
 let nested (deref_ (deref_ a), _) = a
 [%%expect{|
@@ -478,13 +487,13 @@ Error: This value is "local" to the parent region
 
 (* Addresses into a tuple expression have the mode of the tuple *)
 let bad_escaping_addr (local_ x : string) (y : string) =
-  match (x, y) with (deref_ _, deref_ b) -> b
+  match (x, y) with (deref_ _a, deref_ b) -> b
 [%%expect{|
-Line 2, characters 44-45:
-2 |   match (x, y) with (deref_ _, deref_ b) -> b
-                                                ^
+Line 2, characters 45-46:
+2 |   match (x, y) with (deref_ _a, deref_ b) -> b
+                                                 ^
 Error: This value is "local"
-         because it is an address derived from the value at line 2, characters 20-40
+         because it is an address derived from the value at line 2, characters 20-41
          which is "local"
          because it is allocated at line 2, characters 8-14 containing data
          which is "local" to the parent region
@@ -726,7 +735,7 @@ val ok_tuple_expr : string @ unique -> string @ unique -> unit = <fun>
 
 (* ...which they don't use when unused *)
 let ok_tuple_expr_unused (x : string @ unique) (y : string @ unique) =
-  match (x, y) with (deref_ _, _) -> consume x
+  match (x, y) with (deref_ _a, _) -> consume x
 [%%expect{|
 val ok_tuple_expr_unused : string @ unique -> string @ unique -> unit = <fun>
 |}]
@@ -818,33 +827,34 @@ val ok_consume_addr_then_record_with : outer @ unique -> unit = <fun>
 (* Exhaustiveness and other warnings *)
 
 let refute_deref_below_addr : int addr_imm -> int =
-  function addr_imm_ (deref_ _) -> .
+  function addr_imm_ (deref_ _a) -> .
 [%%expect{|
-Line 2, characters 11-31:
-2 |   function addr_imm_ (deref_ _) -> .
-               ^^^^^^^^^^^^^^^^^^^^
+Line 2, characters 11-32:
+2 |   function addr_imm_ (deref_ _a) -> .
+               ^^^^^^^^^^^^^^^^^^^^^
 Error: This match case could not be refuted.
        Here is an example of a value that would reach it:
-       "addr_imm_ (deref_ _)"
+       "addr_imm_ (deref_ _a)"
 |}]
 
 type refute_r = { refute_b : bool }
 let refute_deref_in_field : refute_r -> int =
-  function { refute_b = deref_ _ } -> .
+  function { refute_b = deref_ _a } -> .
 [%%expect{|
 type refute_r = { refute_b : bool; }
-Line 3, characters 11-34:
-3 |   function { refute_b = deref_ _ } -> .
-               ^^^^^^^^^^^^^^^^^^^^^^^
+Line 3, characters 11-35:
+3 |   function { refute_b = deref_ _a } -> .
+               ^^^^^^^^^^^^^^^^^^^^^^^^
 Error: This match case could not be refuted.
-       Here is an example of a value that would reach it: "{refute_b=deref_ _}"
+       Here is an example of a value that would reach it:
+       "{refute_b=deref_ _a}"
 |}]
 
-let exh_tuple x = match x with (deref_ _, 0) -> 1 | (0, 1) -> 2
+let exh_tuple x = match x with (deref_ _a, 0) -> 1 | (0, 1) -> 2
 [%%expect{|
-Line 1, characters 18-63:
-1 | let exh_tuple x = match x with (deref_ _, 0) -> 1 | (0, 1) -> 2
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Line 1, characters 18-64:
+1 | let exh_tuple x = match x with (deref_ _a, 0) -> 1 | (0, 1) -> 2
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Warning 8 [partial-match]: this pattern-matching is not exhaustive.
   Here is an example of a case that is not matched: "(0, 2)"
 
@@ -852,12 +862,12 @@ val exh_tuple : int * int -> int = <fun>
 |}]
 
 let amb_warn = function
-  | (deref_ _, ((Some x, _) | (_, Some x))) when x > 0 -> x
+  | (deref_ _a, ((Some x, _) | (_, Some x))) when x > 0 -> x
   | _ -> 1
 [%%expect{|
-Line 2, characters 4-43:
-2 |   | (deref_ _, ((Some x, _) | (_, Some x))) when x > 0 -> x
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Line 2, characters 4-44:
+2 |   | (deref_ _a, ((Some x, _) | (_, Some x))) when x > 0 -> x
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Warning 57 [ambiguous-var-in-pattern-guard]: Ambiguous or-pattern variables under
   guard; variable "x" appears in different places in different or-pattern
   alternatives.

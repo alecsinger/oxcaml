@@ -558,7 +558,7 @@ let choose b x y =
 (* The second alternative of the first case is kept in the default matrix of
    the other cases. *)
 let default = function
-  | (1, _) | (_, (deref_ _, 1)) -> 1
+  | (1, (deref_ _a, _)) | (_, (deref_ _a, 1)) -> 1
   | (2, (_, 2)) -> 2
   | _ -> 3
 

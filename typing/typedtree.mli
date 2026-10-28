@@ -391,8 +391,8 @@ and 'k pattern_desc =
       value pattern_desc
         (** deref_ P
 
-            Invariants: the pattern is a variable or a wildcard, and the access
-            descriptors must correspond to the surrounding patterns. *)
+            Invariants: the pattern is a variable, and the access descriptors
+            must correspond to the surrounding patterns. *)
   | Tpat_lazy : value general_pattern -> value pattern_desc
         (** lazy P *)
   (* computation patterns *)

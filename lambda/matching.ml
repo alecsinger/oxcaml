@@ -253,8 +253,7 @@ let bind_address (id, duid) deref_address action =
         (transl_deref_address deref_address) action
   | None -> fatal_error "Matching: dereference pattern without an address"
 
-(* The variable a dereference pattern binds to the address of its position,
-   if its argument is not a wildcard. *)
+(* The variable a dereference pattern binds to the address of its position. *)
 let deref_binder (q : pattern) =
   match q.pat_desc with
   | Tpat_any -> None
