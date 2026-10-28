@@ -93,21 +93,19 @@ val local_closure :
 let use_and_return g x = ignore (g x); g
 [%%expect{|
 val use_and_return :
-  ('a @ [> 'm] -> 'b @ [< global many read_write]) @ [< 'n mod aliased contended immutable & global many] ->
-  'a @ [< 'm] ->
-  ('a @ [> 'm] -> 'b @ [< global many read_write]) @ [> 'n | aliased] = <fun>
+  ('a @ ([> 'n] as 'o) -> 'b @ ([< global many read_write] as 'm)) @ [< 'p mod aliased contended immutable & global many] ->
+  'a @ [< 'n] -> ('a @ 'o -> 'b @ 'm) @ [> 'p | aliased] = <fun>
 |}, Principal{|
 val use_and_return :
-  ('a @ [> 'm] -> 'b @ [< global many read_write]) @ [< 'n & global many] ->
-  'a @ [< 'm] ->
-  ('a @ [> 'm] -> 'b @ [< global many read_write]) @ [> 'n | aliased] = <fun>
+  ('a @ ([> 'n] as 'o) -> 'b @ ([< global many read_write] as 'm)) @ [< 'p & global many] ->
+  'a @ [< 'n] -> ('a @ 'o -> 'b @ 'm) @ [> 'p | aliased] = <fun>
 |}]
 
 let both_branches g x = if x then g else (fun y -> y)
 [%%expect{|
 val both_branches :
-  ('a @ [< 'm] -> 'a @ [> 'm]) @ [< 'n & global] ->
-  bool @ 'o -> ('a @ [< 'm] -> 'a @ [> 'm]) @ [> 'n | dynamic] = <fun>
+  ('a @ ([< 'm] as 'o) -> 'a @ ([> 'm] as 'n)) @ [< 'p & global] ->
+  bool @ 'q -> ('a @ 'o -> 'a @ 'n) @ [> 'p | dynamic] = <fun>
 |}]
 
 type 'a cell = { mutable v : 'a }
@@ -118,15 +116,15 @@ type 'a cell = { mutable v : 'a; }
 let store_and_call c g x = c.v <- g; c.v x
 [%%expect{|
 val store_and_call :
-  ('a @ [> 'n] -> 'b @ [< 'm & global]) cell @ [< past('mm0) & past('p) & global read_write] ->
-  (('a @ [> 'n] -> 'b @ [< 'm & global]) @ [< past('q) & past('o) & global many read_write] ->
-   ('a @ [< 'n] -> 'b @ [> 'm | dynamic]) @ [> past('q) | past('mm0) mod many forkable unyielding | stateful]) @ [> past('o) | past('p) mod many forkable unyielding | stateful] =
+  ('a @ ([> 'o] as 'p) -> 'b @ ([< 'm & global] as 'n)) cell @ [< past('mm2) & past('mm0) & global read_write] ->
+  (('a @ 'p -> 'b @ 'n) @ [< past('mm1) & past('q) & global many read_write] ->
+   ('a @ [< 'o] -> 'b @ [> 'm | dynamic]) @ [> past('mm1) | past('mm2) mod many forkable unyielding | stateful]) @ [> past('q) | past('mm0) mod many forkable unyielding | stateful] =
   <fun>
 |}, Principal{|
 val store_and_call :
-  ('a @ [> 'n] -> 'b @ [< 'm & global]) cell @ [< past('mm0) & past('p) & global read_write] ->
-  (('a @ [> 'n] -> 'b @ [< 'm & global]) @ [< past('q) & past('o) & global many read_write] ->
-   ('a @ [< 'n] -> 'b @ [> 'm | dynamic]) @ [> past('q) | past('mm0) | stateful]) @ [> past('o) | past('p) | stateful] =
+  ('a @ ([> 'o] as 'p) -> 'b @ ([< 'm & global] as 'n)) cell @ [< past('mm2) & past('mm0) & global read_write] ->
+  (('a @ 'p -> 'b @ 'n) @ [< past('mm1) & past('q) & global many read_write] ->
+   ('a @ [< 'o] -> 'b @ [> 'm | dynamic]) @ [> past('mm1) | past('mm2) | stateful]) @ [> past('q) | past('mm0) | stateful] =
   <fun>
 |}]
 
