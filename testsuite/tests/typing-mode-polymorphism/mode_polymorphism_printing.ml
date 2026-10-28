@@ -601,3 +601,18 @@ val flip :
   ('a @ [> 'o] -> 'b @ [> 'n] -> 'c @ [< 'm & global]) @ [< global] ->
   'b @ [< 'n & global] -> 'a @ [< 'o] -> 'c @ [> 'm | dynamic] = <fun>
 |}]
+
+let call_and_return f x = f x, f
+[%%expect{|
+val call_and_return :
+  ('a @ [> 'n] -> 'b @ [< 'm & global]) @ [< past('o) & global many] ->
+  'a @ [< 'n] ->
+  'b * ('a @ [> 'n] -> 'b @ [< 'm & global]) @ [> 'm | past('o) | aliased dynamic] =
+  <fun>
+|}, Principal{|
+val call_and_return :
+  ('a @ [> 'n] -> 'b @ [< 'm & global]) @ [< 'o & global many] ->
+  'a @ [< 'n] ->
+  'b * ('a @ [> 'n] -> 'b @ [< 'm & global]) @ [> 'm | 'o | aliased dynamic] =
+  <fun>
+|}]
