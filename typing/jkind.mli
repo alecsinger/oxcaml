@@ -362,22 +362,6 @@ module Builtin : sig
   val immediate_or_null :
     why:History.immediate_or_null_creation_reason -> 'd Types.jkind
 
-  (** Build a jkind of unboxed products, from a list of types with their
-      layouts. Errors if zero inputs are given.
-
-      Precondition: both input lists are the same length.
-
-      This returns an [jkind_l] simply as a matter of convenience; it can be
-      generalized if need be.
-
-      The resulting jkind has quality [Best], because all the components of the
-      product are represented in the with-bounds. *)
-  val product :
-    why:History.product_creation_reason ->
-    (Types.type_expr * Mode.Modality.Const.t) list ->
-    Sort.t Layout.t list ->
-    Types.jkind_l
-
   (** Build a jkind of unboxed products, given only an arity. This jkind will
       not mode-cross (and has kind [Not_best] accordingly), even though unboxed
       products generally should. This is useful when creating an initial jkind
@@ -495,6 +479,51 @@ val of_type_decl_overapproximate_unknown :
   Parsetree.type_declaration ->
   Types.jkind_l option
 
+(** How the kind of a type relates to the kind of a field it contains without
+    boxing: a label of an unboxed record, or the field of an [[@@unboxed]]
+    record or constructor, possibly through several such fields. The kind of the
+    outer type is the kind of the field with a modality applied. *)
+module Unboxed_field_wrapping : sig
+  type t
+
+  (** Not inside any field *)
+  val id : t
+
+  (** A field with the given modality *)
+  val of_modality : Mode.Modality.Const.t -> t
+
+  (** A label of an unboxed record *)
+  val of_label : Types.label_declaration -> t
+
+  (** [concat outer ~then_:inner] describes the fields of [inner] inside the
+      fields of [outer]. *)
+  val concat : t -> then_:t -> t
+
+  (** Change the kind of a field to the kind of the outer type, like
+      [apply_modality_l]. *)
+  val apply_l : t -> (allowed * 'r) Types.jkind -> Types.jkind_l
+
+  (** Change an expectation of the outer type to an expectation of the field,
+      like [apply_modality_r]. *)
+  val apply_r : t -> ('l * allowed) Types.jkind -> Types.jkind_r
+end
+
+(** Build a jkind of unboxed products, from a list of types, with how they are
+    wrapped, and their layouts. Errors if zero inputs are given.
+
+    Precondition: both input lists are the same length.
+
+    This returns an [jkind_l] simply as a matter of convenience; it can be
+    generalized if need be.
+
+    The resulting jkind has quality [Best], because all the components of the
+    product are represented in the with-bounds. *)
+val product_of_fields :
+  why:History.product_creation_reason ->
+  (Types.type_expr * Unboxed_field_wrapping.t) list ->
+  Sort.t Layout.t list ->
+  Types.jkind_l
+
 (** Choose an appropriate jkind for a boxed record type *)
 val for_boxed_record : Types.label_declaration list -> Types.jkind_l
 
@@ -572,10 +601,14 @@ val for_non_float : why:History.value_creation_reason -> 'd Types.jkind
       end = struct
         type 'a t = 'a
       end
-    ]} *)
+    ]}
+
+    The kind is adjusted by the given [Unboxed_field_wrapping.t], for
+    declarations like [[@@unboxed]] records whose kind is that of [rhs] wrapped
+    in a field. *)
 val for_abbreviation :
   type_jkind_purely:(Types.type_expr -> Types.jkind_l) ->
-  modality:Mode.Modality.Const.t ->
+  Unboxed_field_wrapping.t ->
   Types.type_expr ->
   Types.jkind_l
 
