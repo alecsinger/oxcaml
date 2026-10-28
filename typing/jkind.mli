@@ -505,7 +505,7 @@ module Unboxed_field_wrapping : sig
 
   (** Change an expectation of the outer type to an expectation of the field,
       like [apply_modality_r]. *)
-  val apply_r : t -> ('l * allowed) Types.jkind -> Types.jkind_r
+  val apply_r : t -> ('l * allowed) Types.jkind -> (Types.jkind_r, unit) result
 end
 
 (** Build a jkind of unboxed products, from a list of types, with how they are
