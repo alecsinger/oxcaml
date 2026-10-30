@@ -884,6 +884,10 @@ module Overwrites : sig
   (** Parallel composition: Same as [seq]. *)
   val par : t -> t -> t
 
+  (** Whether [seq] and [par] with [empty] on either side can return something
+      other than the argument. *)
+  val changed_by_empty : t -> bool
+
   (** If we find out that a tag was mutated, we need to promote this information
       to its children. This is because a write to a mutable field can change any
       tag that is reachable from the mutable field. *)
@@ -985,6 +989,10 @@ end = struct
   let par t0 t1 = seq_or_par Par t0 t1
 
   let seq t0 t1 = seq_or_par Seq_after t0 t1
+
+  let changed_by_empty = function
+    | Tags { was_mutated } -> was_mutated
+    | Tag_was_mutated -> false
 
   (* This is effectively the set difference [overwrite - learned].
      However, we also store the newly learned tags on the overwrites
@@ -1194,6 +1202,10 @@ module Usage_tree : sig
   (** Parallel composition lifted from [Usage.par] *)
   val par : t -> t -> t
 
+  (** Whether [seq] and [par] with [empty] on either side return a tree equal to
+      the argument. *)
+  val unchanged_by_empty : t -> bool
+
   (** An empty tree containing only the root with empty usage *)
   val empty : t
 
@@ -1322,6 +1334,10 @@ end = struct
   let seq t0 t1 = lift Usage.seq Learned_tags.seq Overwrites.seq t0 t1
 
   let par t0 t1 = lift Usage.par Learned_tags.par Overwrites.par t0 t1
+
+  let rec unchanged_by_empty t =
+    (not (Overwrites.changed_by_empty t.overwrites))
+    && Projection.Map.for_all (fun _ t -> unchanged_by_empty t) t.children
 
   let empty =
     { children = Projection.Map.empty;
@@ -1541,9 +1557,20 @@ end = struct
 
   let choose t0 t1 = map2 Usage_tree.choose t0 t1
 
-  let seq t0 t1 = map2 Usage_tree.seq t0 t1
+  (* [map2] rebuilds the trees present on only one side, which makes long
+     sequences quadratic. For [seq] and [par], those trees are usually
+     unchanged, so keep them as they are. *)
+  let seq_or_par f t0 t1 =
+    let unchanged =
+      Root_id.Map.for_all (fun _ t -> Usage_tree.unchanged_by_empty t)
+    in
+    if unchanged t0 && unchanged t1
+    then Root_id.Map.union (fun _ t0 t1 -> Some (f t0 t1)) t0 t1
+    else map2 f t0 t1
 
-  let par t0 t1 = map2 Usage_tree.par t0 t1
+  let seq t0 t1 = seq_or_par Usage_tree.seq t0 t1
+
+  let par t0 t1 = seq_or_par Usage_tree.par t0 t1
 
   (* For convenience, our semirings do not have a zero.
      However, when we fold the [choose] operation we need to initialize the
