@@ -1187,12 +1187,27 @@ and value_kind_tuple env ~loc ~visited ~depth ~num_nodes_visited elements =
     in
     num_nodes_visited, tuple_kind constructor_shape
 
+(* Translation asks for the kind of the same type many times (e.g. for every
+   argument of an application), so remember recent results. The result only
+   depends on [ty] and on the type declarations visible in [env], which
+   [Env.same_type_declarations] approximates (as for [Ctype]'s expansion
+   memo). *)
+let value_kind_cache = Local_store.s_table (fun n -> Array.make n None) 256
+
 let value_kind env loc ty =
+  let cache = !value_kind_cache in
+  let slot = get_id ty land (Array.length cache - 1) in
+  match cache.(slot) with
+  | Some (env', ty', value_kind)
+    when Env.same_type_declarations env' env && eq_type ty' ty ->
+    value_kind
+  | Some _ | None ->
   try
     let (_num_nodes_visited, value_kind) =
       value_kind env ~loc ~visited:Numbers.Int.Set.empty ~depth:0
         ~num_nodes_visited:0 ty
     in
+    cache.(slot) <- Some (env, ty, value_kind);
     value_kind
   with
   | Missing_cmi_fallback ->
